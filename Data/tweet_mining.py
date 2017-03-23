@@ -6,15 +6,6 @@ from unidecode import unidecode
 # Read authentication keys from .dat file
 keys = open("keys.dat","r")
 
-# Authentication and connection to Twitter API.
-consumer_key = keys.readline()[:-1]
-consumer_secret = keys.readline()[:-1]
-access_key = keys.readline()[:-1]
-access_secret = keys.readline()[:-1]
-
-# Close authentication file
-keys.close()
-
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_key, access_secret)
 api = tweepy.API(auth)
@@ -35,7 +26,8 @@ with open('tweets.csv', 'wb') as file:
                     "tweet_urls",
                     "tweet_urls_count",
                     "tweet_user_mentions",
-                    "tweet_user_mentions_count"])
+                    "tweet_user_mentions_count",
+                    "tweet_by_trump"])
     
     # For each Twitter username in the users array
     for user in users:
@@ -74,13 +66,17 @@ with open('tweets.csv', 'wb') as file:
             if(user_mentions_data != None):
                 for i in range(len(user_mentions_data)):
                     user_mentions.append(unidecode(user_mentions_data[i]['screen_name']))
+                    
+            tweet_by_trump = 0
+            if(user_obj.screen_name=='realDonaldTrump'):
+                tweet_by_trump = 1
 
             more_tweet_info = [', '.join(hashtags),
                                len(hashtags),
                                ', '.join(urls),
                                len(urls),
                                ', '.join(user_mentions),
-                               len(user_mentions)]
+                               len(user_mentions),tweet_by_trump]
 
             # Write data to CSV.
             writer.writerow(user_info + tweet_info + more_tweet_info)
