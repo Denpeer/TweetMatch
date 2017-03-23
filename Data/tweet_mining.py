@@ -3,11 +3,17 @@ from tweepy import Cursor
 import unicodecsv
 from unidecode import unidecode
 
+# Read authentication keys from .dat file
+keys = open("keys.dat","r")
+
 # Authentication and connection to Twitter API.
-consumer_key = ""
-consumer_secret = ""
-access_key = ""
-access_secret = ""
+consumer_key = keys.readline()[:-1]
+consumer_secret = keys.readline()[:-1]
+access_key = keys.readline()[:-1]
+access_secret = keys.readline()[:-1]
+
+# Close authentication file
+keys.close()
 
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_key, access_secret)
