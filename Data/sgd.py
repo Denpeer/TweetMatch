@@ -9,11 +9,13 @@ from math import ceil
 from sklearn import metrics
 
 def removeURLs(urls,tweets):
-    for idx, val in enumerate(tweets):
+    # Remove all tweets
+    for idx, val in enumerate(zip(urls,tweets)):
         if(urls[idx]!=''):
-            urlList = urls[idx].split(',')
-            resultwords  = [word for word in val.split() if word not in urlList]
-            print(' '.join(resultwords))
+            urlList = urls[idx].split(', ')
+            resultwords  = [word for word in val[1].split() if word not in urlList]
+            tweets[idx] = ' '.join(resultwords)
+    return tweets
 
 def getText():
     # Read tweets from csv
@@ -22,7 +24,7 @@ def getText():
         tweet_all = [(row['tweet_text'],row['politician_name'],row['tweet_by_trump'],row['tweet_urls']) for row in reader]
         tweet_text = [x[0] for x in tweet_all]
         tweet_urls =  [x[3] for x in tweet_all]
-        #removeURLs(tweet_urls,tweet_text)
+        removeURLs(tweet_urls,tweet_text)
         return tweet_all
 
 
