@@ -77,7 +77,11 @@ with open('tweets.csv', 'wb') as file:
         # Get 1000 most recent tweets for the current user.
         for tweet in Cursor(api.user_timeline, screen_name = user).items(max_tweets):
 
+            # Show progress
             progress(count/(max_tweets/100)) 
+
+            # Increase count for tweets
+            count += 1
 
             # Remove all retweets.
             if tweet.text[0:3] == "RT ":
@@ -121,8 +125,7 @@ with open('tweets.csv', 'wb') as file:
             # Write data to CSV.
             writer.writerow(user_info + tweet_info + more_tweet_info)
 
-            # Increase count for tweets
-            count += 1
+
 
         endProgress()
 
