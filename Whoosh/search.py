@@ -14,7 +14,7 @@ from whoosh import analysis
 from collections import defaultdict
 import csv
 
-with open('Data/tweets.csv', newline='') as csvfile:
+with open('../Data/tweets.csv', newline='') as csvfile:
     reader = csv.DictReader(csvfile)
     name = ""
     
@@ -29,7 +29,7 @@ ana = analysis.RegexTokenizer() | analysis.BiWordFilter()
 #the schema used only uses title (the author of the tweet) and content (the tweet text). biword is the content filterd by the biwordfilter        
 schema = fields.Schema(title=fields.TEXT(stored=True), content=fields.TEXT(stored=True), biword=fields.TEXT(analyzer=ana, phrase=False))
 #create local index (TestIndex folder already exists on my computer, one hiearchy level up; this is just for testing since it will be working on the webserver soon) 
-ix = create_in("../TestIndex", schema)
+ix = create_in("../../TestIndex", schema)
 
 #create the index writer
 writer = ix.writer()
