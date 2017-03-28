@@ -34,31 +34,42 @@ def train(X,Y):
 
     return text_clf.fit(X, Y)
 
+def setup():
+    # Read relevant rows
+    tweet_all = getText()
+    tweet_text = [x[0] for x in tweet_all]
+    politician_name = [x[1] for x in tweet_all]
+    tweet_by_trump = [x[2] for x in tweet_all]
+    
+    #Split the data into around 80% training data and 20% test data
+    p = np.random.permutation(len(tweet_all))
+    split = ceil(len(tweet_all)*0.8)
+    tweet_text_train = [tweet_text[x] for x in p[:split]]
+    politician_name_train = [politician_name[x] for x in p[:split]]
+    tweet_by_trump_train = [tweet_by_trump[x] for x in p[:split]]
+    
+    tweet_text_test = [tweet_text[x] for x in p[split:]]
+    politician_name_test = [politician_name[x] for x in p[split:]]
+    tweet_by_trump_test = [tweet_by_trump[x] for x in p[split:]]
+    
+    # Train the model
+    text_clf = train(tweet_text_train, tweet_by_trump_train)
+    
+    # Validate the model
+    predicted = text_clf.predict(tweet_text_test)
+    #confidence = text_clf.decision_function(tweet_text_test)
+    print("Classification report:\n"+metrics.classification_report(tweet_by_trump_test, predicted,target_names=('Trump','Not Trump')))
+
+    return text_clf
+
 def main(argv):
-        # Read relevant rows
-        tweet_all = getText()
-        tweet_text = [x[0] for x in tweet_all]
-        politician_name = [x[1] for x in tweet_all]
-        tweet_by_trump = [x[2] for x in tweet_all]
-        
-        #Split the data into around 80% training data and 20% test data
-        p = np.random.permutation(len(tweet_all))
-        split = ceil(len(tweet_all)*0.8)
-        tweet_text_train = [tweet_text[x] for x in p[:split]]
-        politician_name_train = [politician_name[x] for x in p[:split]]
-        tweet_by_trump_train = [tweet_by_trump[x] for x in p[:split]]
-        
-        tweet_text_test = [tweet_text[x] for x in p[split:]]
-        politician_name_test = [politician_name[x] for x in p[split:]]
-        tweet_by_trump_test = [tweet_by_trump[x] for x in p[split:]]
-        
-        # Train the model
-        text_clf = train(tweet_text_train, tweet_by_trump_train)
-        
-        # Validate the model
-        predicted = text_clf.predict(tweet_text_test)
-        #confidence = text_clf.decision_function(tweet_text_test)
-        print(metrics.classification_report(tweet_by_trump_test, predicted,target_names=('Trump','Not Trump')))
+    print("Training the model")
+    text_clf = setup()
+    print("Done")
+    if (len(argv) == 2):
+        print("predicting \""+argv[1]+"\" from Donald Trump")
+        print(text_clf.predict(argv)[1])
+
 
 if __name__ == "__main__":
     main(sys.argv)
