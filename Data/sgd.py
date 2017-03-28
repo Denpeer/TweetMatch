@@ -1,12 +1,32 @@
 import sys
 import csv
 import numpy as np
+import scipy
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 from math import ceil
 from sklearn import metrics
+from textstat.textstat import textstat
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import normalize
+from sklearn.model_selection import GridSearchCV
+
+#Feature transformer class for pipeline
+class extraFeature(BaseEstimator, TransformerMixin):
+    def __init__(self, func):
+        self.func = func
+    
+    #Calculate feature metric (e.g. Flesch-Kincaid reading ease) for each sentence in the input and normalize the scores
+    def transform(self, X, y=None):
+        #Use function passed in pipeline
+        ret = [self.func(sentence) for sentence in X]
+        ret = np.array(normalize(ret)[0]).reshape(len(ret),1)
+        return ret
+    
+    def fit(self, X, y=None):
+        return self
 
 def removeURLs(urls,tweets):
     # Remove all tweets
@@ -27,11 +47,27 @@ def getText():
         removeURLs(tweet_urls,tweet_text)
         return tweet_all
 
-
+#Return pipeline with the combined features of the tdidf and reading ease score and Stochastic Gradient Descent Classifier
 def train(X,Y):
-    # Setup pipeline with countvectorizer, tfidftransformer and stochastic gradient descent Classifier
-    text_clf = Pipeline([('vect', CountVectorizer(ngram_range=(1,2))),('tfidf', TfidfTransformer(use_idf=True)),('clf', SGDClassifier(learning_rate='optimal',eta0=0.001,class_weight='balanced',loss='modified_huber', penalty='l2',alpha=1e-3, n_iter=5, random_state=42))])
-
+    text_clf = Pipeline([
+                         ('features',FeatureUnion([
+                                                   ('words',Pipeline([
+                                                                      ('vect', CountVectorizer(ngram_range=(1,2))),
+                                                                      ('tfidf', TfidfTransformer(use_idf=True))
+                                                                      ])),
+                                                   ('fleshReadingEase',extraFeature(textstat.flesch_reading_ease)),
+                                                   ('smogIndex',extraFeature(textstat.smog_index)),
+                                                   ('colemanLiauIndex',extraFeature(textstat.coleman_liau_index)),
+                                                   ('fleschKincaidGrade',extraFeature(textstat.flesch_kincaid_grade)),
+                                                   ('automatedReadibilityIndex',extraFeature(textstat.automated_readability_index)),
+                                                   ('daleChallReadability',extraFeature(textstat.dale_chall_readability_score)),
+                                                   ('difficultWords',extraFeature(textstat.difficult_words)),
+                                                   ('linsearWriteFormula',extraFeature(textstat.linsear_write_formula)),
+                                                   ('gunningFog',extraFeature(textstat.gunning_fog))
+                                                   ])),
+                         ('clf', SGDClassifier(learning_rate='optimal',eta0=0.001,class_weight='balanced',loss='modified_huber', penalty='l2',alpha=1e-3, n_iter=5, random_state=42))
+    ])
+    
     return text_clf.fit(X, Y)
 
 def setup():
@@ -63,13 +99,13 @@ def setup():
     return text_clf
 
 def main(argv):
+
     print("Training the model")
     text_clf = setup()
     print("Done")
     if (len(argv) == 2):
         print("predicting \""+argv[1]+"\" from Donald Trump")
         print(text_clf.predict(argv)[1])
-
 
 if __name__ == "__main__":
     main(sys.argv)
