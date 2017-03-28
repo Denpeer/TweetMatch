@@ -2,6 +2,28 @@ import tweepy
 from tweepy import Cursor
 import unicodecsv
 from unidecode import unidecode
+import sys
+
+# The following 3 functions simulate a progress bar in the terminal output
+# title = string shown before progress bar
+# 0 <= x <= 100 amount of progress made
+def startProgress(title):
+    global progress_x
+    sys.stdout.write(title + ": [" + "-"*40 + "]" + chr(8)*41)
+    sys.stdout.flush()
+    progress_x = 0
+
+def progress(x):
+    global progress_x
+    x = int(x * 40 // 100)
+    sys.stdout.write("#" * (x - progress_x))
+    sys.stdout.flush()
+    progress_x = x
+
+def endProgress():
+    sys.stdout.write("#" * (40 - progress_x) + "]\n")
+    sys.stdout.flush()
+
 
 # Read authentication keys from .dat file
 keys = open("keys.dat","r")
@@ -45,9 +67,22 @@ with open('tweets.csv', 'wb') as file:
         user_info = [user_obj.name,
                      user_obj.screen_name]
 
+        startProgress("Downloading tweets from" + user)
+        # Maximum amounts of tweets to retrieve
+        max_tweets = 1000;
+
+        # Count the amount of tweets retrieved
+        count = 0;
+
         # Get 1000 most recent tweets for the current user.
-        for tweet in Cursor(api.user_timeline, screen_name = user).items(1000):
-        
+        for tweet in Cursor(api.user_timeline, screen_name = user).items(max_tweets):
+
+            # Show progress
+            progress(count/(max_tweets/100)) 
+
+            # Increase count for tweets
+            count += 1
+
             # Remove all retweets.
             if tweet.text[0:3] == "RT ":
                 continue
@@ -90,5 +125,9 @@ with open('tweets.csv', 'wb') as file:
             # Write data to CSV.
             writer.writerow(user_info + tweet_info + more_tweet_info)
 
-        # Show progress.
+
+
+        endProgress()
+
         print("Wrote tweets by %s to CSV." % user)
+
