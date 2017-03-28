@@ -39,7 +39,7 @@ def removeURLs(urls,tweets):
 
 def getText():
     # Read tweets from csv
-    with open('tweets.csv','rb') as csvfile:
+    with open('tweets.csv','rt') as csvfile:
         reader = csv.DictReader(csvfile)
         tweet_all = [(row['tweet_text'],row['politician_name'],row['tweet_by_trump'],row['tweet_urls']) for row in reader]
         tweet_text = [x[0] for x in tweet_all]
