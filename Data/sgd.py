@@ -12,16 +12,17 @@ from textstat.textstat import textstat
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import normalize
 
-#Flesch-Kincard reading ease transformer class for pipeline
-class fleschKincaid(BaseEstimator, TransformerMixin):
-    def __init__(self, vars):
-        self.vars = vars
+#Feature transformer class for pipeline
+class extraFeature(BaseEstimator, TransformerMixin):
+    def __init__(self, func):
+        self.func = func
     
-    #Calculate Flesch-Kincard reading ease score for each sentence in the input and normalize the scores
+    #Calculate feature metric (e.g. Flesch-Kincaid reading ease) for each sentence in the input and normalize the scores
     def transform(self, X, y=None):
-        fre = [textstat.flesch_reading_ease(sentence) for sentence in X]
-        fre = np.array(normalize(fre)[0]).reshape(len(fre),1)
-        return fre
+        #Use function passed in pipeline
+        ret = [self.func(sentence) for sentence in X]
+        ret = np.array(normalize(ret)[0]).reshape(len(ret),1)
+        return ret
     
     def fit(self, X, y=None):
         return self
@@ -53,7 +54,15 @@ def train(X,Y):
                                                                       ('vect', CountVectorizer(ngram_range=(1,2))),
                                                                       ('tfidf', TfidfTransformer(use_idf=True))
                                                                       ])),
-                                                   ('extra',fleschKincaid('ex'))
+                                                   ('fleshReadingEase',extraFeature(textstat.flesch_reading_ease)),
+                                                   ('smogIndex',extraFeature(textstat.smog_index)),
+                                                   ('colemanLiauIndex',extraFeature(textstat.coleman_liau_index)),
+                                                   ('fleschKincaidGrade',extraFeature(textstat.flesch_kincaid_grade)),
+                                                   ('automatedReadibilityIndex',extraFeature(textstat.automated_readability_index)),
+                                                   ('daleChallReadability',extraFeature(textstat.dale_chall_readability_score)),
+                                                   ('difficultWords',extraFeature(textstat.difficult_words)),
+                                                   ('linsearWriteFormula',extraFeature(textstat.linsear_write_formula)),
+                                                   ('gunningFog',extraFeature(textstat.gunning_fog))
                                                    ])),
                          ('clf', SGDClassifier(learning_rate='optimal',eta0=0.001,class_weight='balanced',loss='modified_huber', penalty='l2',alpha=1e-3, n_iter=5, random_state=42))
     ])
