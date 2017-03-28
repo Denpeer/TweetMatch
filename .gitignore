@@ -1,9 +1,11 @@
 # CSV extensions
 *.csv
 
-# twitter key authentication file
+# Twitter key authentication file
 keys.dat
 
+# Gimp files
+*.xcf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
