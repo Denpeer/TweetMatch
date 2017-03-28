@@ -11,6 +11,7 @@ from sklearn import metrics
 from textstat.textstat import textstat
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import normalize
+from sklearn.model_selection import GridSearchCV
 
 #Feature transformer class for pipeline
 class extraFeature(BaseEstimator, TransformerMixin):
@@ -66,6 +67,7 @@ def train(X,Y):
                                                    ])),
                          ('clf', SGDClassifier(learning_rate='optimal',eta0=0.001,class_weight='balanced',loss='modified_huber', penalty='l2',alpha=1e-3, n_iter=5, random_state=42))
     ])
+    
     return text_clf.fit(X, Y)
 
 def main(argv):
@@ -88,7 +90,7 @@ def main(argv):
         
         # Train the model
         text_clf = train(tweet_text_train, tweet_by_trump_train)
-        
+
         # Validate the model
         predicted = text_clf.predict(tweet_text_test)
 
