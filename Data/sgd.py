@@ -7,6 +7,24 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
 from math import ceil
 from sklearn import metrics
+from textstat.textstat import textstat
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import normalize
+
+#Feature transformer class for pipeline
+class extraFeature(BaseEstimator, TransformerMixin):
+    def __init__(self, func):
+        self.func = func
+    
+    #Calculate feature metric (e.g. Flesch-Kincaid reading ease) for each sentence in the input and normalize the scores
+    def transform(self, X, y=None):
+        #Use function passed in pipeline
+        ret = normalize(np.array([float(self.func(sentence)) for sentence in X]).reshape(-1,1))
+
+        return ret
+    
+    def fit(self, X, y=None):
+        return self
 
 def removeURLs(urls,tweets):
     # Remove all tweets
@@ -43,7 +61,7 @@ def main(argv):
         
         #Split the data into around 80% training data and 20% test data
         p = np.random.permutation(len(tweet_all))
-        split = ceil(len(tweet_all)*0.8)
+        split = int(ceil(len(tweet_all)*0.8))
         tweet_text_train = [tweet_text[x] for x in p[:split]]
         politician_name_train = [politician_name[x] for x in p[:split]]
         tweet_by_trump_train = [tweet_by_trump[x] for x in p[:split]]
