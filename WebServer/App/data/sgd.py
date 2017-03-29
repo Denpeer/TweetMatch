@@ -126,7 +126,11 @@ def predict(tweet,pickleFile):
     else:
         prediction = text_clf.predict([tweet])[0]
         print("Result: " + tweet + " = " + prediction)
-        return prediction
+        print('probability of trump tweet: ')
+        print(text_clf.predict_proba([tweet])[0][1])
+        print('probability that it\'s not a trump tweet') 
+        print(text_clf.predict_proba([tweet])[0][0])
+        return [prediction,text_clf.predict_proba([tweet])[0][0],text_clf.predict_proba([tweet])[0][1]]
 
 # checks if necessary data is present, download it when it's not. return true after data is retrieved.
 def checkData(tweetData,pickleFile):
@@ -156,9 +160,8 @@ def trainAndPredict(tweet,pickleFile):
     text_clf = setup(pickleFile)
 
     print("Done")
-    prediction = text_clf.predict([tweet])[0]
-    print("Result: " + tweet + " = " + prediction)
-    return prediction
+    
+    return predict(pickleFile)
 
 def main(argv):
     
