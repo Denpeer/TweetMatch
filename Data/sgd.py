@@ -11,7 +11,6 @@ from sklearn import metrics
 from textstat.textstat import textstat
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import normalize
-from sklearn.model_selection import GridSearchCV
 
 #Feature transformer class for pipeline
 class extraFeature(BaseEstimator, TransformerMixin):
@@ -21,8 +20,7 @@ class extraFeature(BaseEstimator, TransformerMixin):
     #Calculate feature metric (e.g. Flesch-Kincaid reading ease) for each sentence in the input and normalize the scores
     def transform(self, X, y=None):
         #Use function passed in pipeline
-        ret = [self.func(sentence) for sentence in X]
-        ret = np.array(normalize(ret)[0]).reshape(len(ret),1)
+        ret = normalize(np.array([float(self.func(sentence)) for sentence in X]).reshape(-1,1))
         return ret
     
     def fit(self, X, y=None):
