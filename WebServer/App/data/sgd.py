@@ -3,7 +3,7 @@ import csv
 import numpy as np
 import scipy
 import _pickle
-import os.path
+import os
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
@@ -13,6 +13,7 @@ from sklearn import metrics
 from textstat.textstat import textstat
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import normalize
+from App.data.tweet_mining import downloadTweets
 
 #Feature transformer class for pipeline
 class extraFeature(BaseEstimator, TransformerMixin):
@@ -71,7 +72,7 @@ def train(X,Y):
     
     return text_clf.fit(X, Y)
 
-def setup(picklefile):
+def setup(pickleFile):
     # Read relevant rows
     tweet_all = getText()
     tweet_text = [x[0] for x in tweet_all]
@@ -99,39 +100,60 @@ def setup(picklefile):
     print("Classification report:\n"+metrics.classification_report(tweet_by_trump_test, predicted,target_names=('Trump','Not Trump')))
 
     # pickle classifier (save to disk)
-    with open(picklefile, 'wb') as fid:
+    with open(pickleFile, 'wb') as fid:
         _pickle.dump(text_clf, fid)
 
 
     return text_clf
 
 # predicts a tweet represented as a string using a pickled classifier
-def predict(tweet,picklefile):
+def predict(tweet,pickleFile):
 
     # if pickled model is not available under given filename, retrain and create it
-    if (os.path.isfile(picklefile) == False):
-        return trainAndPredict(tweet,picklefile)
+    if (os.path.isfile(pickleFile) == False):
+        return trainAndPredict(tweet,pickleFile)
 
     # unpickling can result in an AttributeError when not pickled in flask, retrain and repickle in this case.
     try:
         # unpickle classifier
-        with open(picklefile, 'rb') as fid:
+        with open(pickleFile, 'rb') as fid:
             text_clf = _pickle.load(fid)
     
     except AttributeError as e:
         print(e + ": model pickled outside of flask.\n Retraining model")
-        trainAndPredict(tweet,picklefile)
+        return trainAndPredict(tweet,pickleFile)
     
     else:
         prediction = text_clf.predict([tweet])[0]
         print("Result: " + tweet + " = " + prediction)
         return prediction
 
+# checks if necessary data is present, download it when it's not. return true after data is retrieved.
+def checkData(tweetData,pickleFile):
+    if (os.path.isfile(tweetData) == False):
+        downloadTweets(tweetData)
+
+    # testtweet can be used in this case since the value is not actually used. The function just trains the model
+    if (os.path.isfile(pickleFile) == False):
+        trainAndPredict('testweet',pickleFile)
+    else:
+        try:
+        # unpickle classifier
+            with open(pickleFile, 'rb') as fid:
+                text_clf = _pickle.load(fid)
+    
+        except AttributeError as e:
+            print(e + ": model pickled outside of flask.\n Retraining model")
+            trainAndPredict('testtweet',pickleFile)
+
+    print("current working directory: " + os.getcwd() +"\n"+"Tweet data available on: "+ tweetData + " Pickled model available on: "+ pickleFile)
+    return True
+
 # predicts a tweet represented as a string by training from tweets.csv
-def trainAndPredict(tweet,picklefile):
+def trainAndPredict(tweet,pickleFile):
 
     print("Training the model")
-    text_clf = setup(picklefile)
+    text_clf = setup(pickleFile)
 
     print("Done")
     prediction = text_clf.predict([tweet])[0]

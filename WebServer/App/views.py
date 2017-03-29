@@ -1,16 +1,10 @@
 import sys
-from App.data.sgd import predict
+from App.data.sgd import predict, checkData
 from flask import render_template, flash, redirect
 from App import app
 from .forms import LoginForm
 
 
-
-@app.route('/')
-@app.route('/index')
-def index():
-    user = {'nickname': 'Dennis'}  # fake user
-    return render_template("blog/index.html",title='Home',user=user)
 
 
 @app.route('/tweet',methods=['GET','POST'])
@@ -25,15 +19,18 @@ def tweet():
 	return render_template('tweet.html',
 							title="Tweet",
 							form=form)
-
+@app.route('/',methods=['GET','POST'])
+@app.route('/index',methods=['GET','POST'])
 @app.route('/bootstrap',methods=['GET','POST'])
 def bootstrap():
 	form = LoginForm()
 	subtitle = 'How to use TweetMatch'
+	pickleFile = 'dumped_classifier.pkl'
+	tweetData = 'tweets.csv'
+	checkData(tweetData,pickleFile)
 	if form.validate_on_submit():
 		subtitle = 'Tweet results'
-		picklefile = 'dumped_classifier.pkl'
-		prediction = predict(form.tweet.data,picklefile)
+		prediction = predict(form.tweet.data,pickleFile)
 		if prediction == "1":
 			flash('You tweet like: Donald Trump')
 		else:
