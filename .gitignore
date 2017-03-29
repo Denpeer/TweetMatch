@@ -4,6 +4,9 @@
 # Twitter key authentication file
 keys.dat
 
+# Pickled python objects
+*.pkl
+
 # Gimp files
 *.xcf
 

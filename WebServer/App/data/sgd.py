@@ -2,6 +2,8 @@ import sys
 import csv
 import numpy as np
 import scipy
+import _pickle
+import os
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
@@ -11,6 +13,7 @@ from sklearn import metrics
 from textstat.textstat import textstat
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import normalize
+from App.data.tweet_mining import downloadTweets
 
 #Feature transformer class for pipeline
 class extraFeature(BaseEstimator, TransformerMixin):
@@ -21,6 +24,7 @@ class extraFeature(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         #Use function passed in pipeline
         ret = normalize(np.array([float(self.func(sentence)) for sentence in X]).reshape(-1,1))
+
         return ret
     
     def fit(self, X, y=None):
@@ -68,32 +72,105 @@ def train(X,Y):
     
     return text_clf.fit(X, Y)
 
+def setup(pickleFile):
+    # Read relevant rows
+    tweet_all = getText()
+    tweet_text = [x[0] for x in tweet_all]
+    politician_name = [x[1] for x in tweet_all]
+    tweet_by_trump = [x[2] for x in tweet_all]
+    
+    #Split the data into around 80% training data and 20% test data
+    p = np.random.permutation(len(tweet_all))
+    split = ceil(len(tweet_all)*0.8)
+    tweet_text_train = [tweet_text[x] for x in p[:split]]
+    politician_name_train = [politician_name[x] for x in p[:split]]
+    tweet_by_trump_train = [tweet_by_trump[x] for x in p[:split]]
+    
+    tweet_text_test = [tweet_text[x] for x in p[split:]]
+    politician_name_test = [politician_name[x] for x in p[split:]]
+    tweet_by_trump_test = [tweet_by_trump[x] for x in p[split:]]
+
+    # Train the model
+    text_clf = train(tweet_text_train, tweet_by_trump_train)
+    
+
+    # Validate the model
+    predicted = text_clf.predict(tweet_text_test)
+    #confidence = text_clf.decision_function(tweet_text_test)
+    print("Classification report:\n"+metrics.classification_report(tweet_by_trump_test, predicted,target_names=('Trump','Not Trump')))
+
+    # pickle classifier (save to disk)
+    with open(pickleFile, 'wb') as fid:
+        _pickle.dump(text_clf, fid)
+
+
+    return text_clf
+
+# predicts a tweet represented as a string using a pickled classifier
+def predict(tweet,pickleFile):
+
+    # if pickled model is not available under given filename, retrain and create it
+    if (os.path.isfile(pickleFile) == False):
+        return trainAndPredict(tweet,pickleFile)
+
+    # unpickling can result in an AttributeError when not pickled in flask, retrain and repickle in this case.
+    try:
+        # unpickle classifier
+        with open(pickleFile, 'rb') as fid:
+            text_clf = _pickle.load(fid)
+    
+    except AttributeError as e:
+        print(e + ": model pickled outside of flask.\n Retraining model")
+        return trainAndPredict(tweet,pickleFile)
+    
+    else:
+        prediction = text_clf.predict([tweet])[0]
+        print("Result: " + tweet + " = " + prediction)
+        return prediction
+
+# checks if necessary data is present, download it when it's not. return true after data is retrieved.
+def checkData(tweetData,pickleFile):
+    if (os.path.isfile(tweetData) == False):
+        downloadTweets(tweetData)
+
+    # testtweet can be used in this case since the value is not actually used. The function just trains the model
+    if (os.path.isfile(pickleFile) == False):
+        trainAndPredict('testweet',pickleFile)
+    else:
+        try:
+        # unpickle classifier
+            with open(pickleFile, 'rb') as fid:
+                text_clf = _pickle.load(fid)
+    
+        except AttributeError as e:
+            print(e + ": model pickled outside of flask.\n Retraining model")
+            trainAndPredict('testtweet',pickleFile)
+
+    print("current working directory: " + os.getcwd() +"\n"+"Tweet data available on: "+ tweetData + " Pickled model available on: "+ pickleFile)
+    return True
+
+# predicts a tweet represented as a string by training from tweets.csv
+def trainAndPredict(tweet,pickleFile):
+
+    print("Training the model")
+    text_clf = setup(pickleFile)
+
+    print("Done")
+    prediction = text_clf.predict([tweet])[0]
+    print("Result: " + tweet + " = " + prediction)
+    return prediction
+
 def main(argv):
-        # Read relevant rows
-        tweet_all = getText()
-        tweet_text = [x[0] for x in tweet_all]
-        politician_name = [x[1] for x in tweet_all]
-        tweet_by_trump = [x[2] for x in tweet_all]
-        
-        #Split the data into around 80% training data and 20% test data
-        p = np.random.permutation(len(tweet_all))
-        split = int(ceil(len(tweet_all)*0.8))
-        tweet_text_train = [tweet_text[x] for x in p[:split]]
-        politician_name_train = [politician_name[x] for x in p[:split]]
-        tweet_by_trump_train = [tweet_by_trump[x] for x in p[:split]]
-        
-        tweet_text_test = [tweet_text[x] for x in p[split:]]
-        politician_name_test = [politician_name[x] for x in p[split:]]
-        tweet_by_trump_test = [tweet_by_trump[x] for x in p[split:]]
-        
-        # Train the model
-        text_clf = train(tweet_text_train, tweet_by_trump_train)
+    
+    print("Training the model")
+    text_clf = setup()
 
-        # Validate the model
-        predicted = text_clf.predict(tweet_text_test)
-
-        #confidence = text_clf.decision_function(tweet_text_test)
-        print(metrics.classification_report(tweet_by_trump_test, predicted,target_names=('Trump','Not Trump')))
+    print("Done")
+    if (len(argv) == 2):
+        print("predicting \""+argv[1]+"\" from Donald Trump")
+        print(text_clf.predict(argv)[1])
+    
+    print(argv[1] + " : " + predict(argv[1]))
 
 if __name__ == "__main__":
     main(sys.argv)
