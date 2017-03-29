@@ -97,7 +97,7 @@ def setup(pickleFile):
     # Validate the model
     predicted = text_clf.predict(tweet_text_test)
     #confidence = text_clf.decision_function(tweet_text_test)
-    print("Classification report:\n"+metrics.classification_report(tweet_by_trump_test, predicted,target_names=('Trump','Not Trump')))
+    print("Classification report:\n"+metrics.classification_report(tweet_by_trump_test, predicted,target_names=('Not Trump','Trump')))
 
     # pickle classifier (save to disk)
     with open(pickleFile, 'wb') as fid:
