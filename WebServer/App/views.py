@@ -1,6 +1,10 @@
+import sys
+from App.data.sgd import predict
 from flask import render_template, flash, redirect
 from App import app
 from .forms import LoginForm
+
+
 
 @app.route('/')
 @app.route('/index')
@@ -28,7 +32,9 @@ def bootstrap():
 	subtitle = 'How to use TweetMatch'
 	if form.validate_on_submit():
 		subtitle = 'Tweet results'
-		if "china" in form.tweet.data.lower():
+		picklefile = 'dumped_classifier.pkl'
+		prediction = predict(form.tweet.data,picklefile)
+		if prediction == "1":
 			flash('You tweet like: Donald Trump')
 		else:
 			flash('You don\'t tweet like: Donald Trump')

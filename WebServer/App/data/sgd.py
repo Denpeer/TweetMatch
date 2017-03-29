@@ -2,6 +2,8 @@ import sys
 import csv
 import numpy as np
 import scipy
+import _pickle
+import os.path
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
@@ -21,6 +23,7 @@ class extraFeature(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         #Use function passed in pipeline
         ret = normalize(np.array([float(self.func(sentence)) for sentence in X]).reshape(-1,1))
+
         return ret
     
     def fit(self, X, y=None):
@@ -68,7 +71,7 @@ def train(X,Y):
     
     return text_clf.fit(X, Y)
 
-def setup():
+def setup(picklefile):
     # Read relevant rows
     tweet_all = getText()
     tweet_text = [x[0] for x in tweet_all]
@@ -85,25 +88,67 @@ def setup():
     tweet_text_test = [tweet_text[x] for x in p[split:]]
     politician_name_test = [politician_name[x] for x in p[split:]]
     tweet_by_trump_test = [tweet_by_trump[x] for x in p[split:]]
-    
+
     # Train the model
     text_clf = train(tweet_text_train, tweet_by_trump_train)
     
+
     # Validate the model
     predicted = text_clf.predict(tweet_text_test)
     #confidence = text_clf.decision_function(tweet_text_test)
     print("Classification report:\n"+metrics.classification_report(tweet_by_trump_test, predicted,target_names=('Trump','Not Trump')))
 
+    # pickle classifier (save to disk)
+    with open(picklefile, 'wb') as fid:
+        _pickle.dump(text_clf, fid)
+
+
     return text_clf
 
-def main(argv):
+# predicts a tweet represented as a string using a pickled classifier
+def predict(tweet,picklefile):
+
+    # if pickled model is not available under given filename, retrain and create it
+    if (os.path.isfile(picklefile) == False):
+        return trainAndPredict(tweet,picklefile)
+
+    # unpickling can result in an AttributeError when not pickled in flask, retrain and repickle in this case.
+    try:
+        # unpickle classifier
+        with open(picklefile, 'rb') as fid:
+            text_clf = _pickle.load(fid)
+    
+    except AttributeError as e:
+        print(e + ": model pickled outside of flask.\n Retraining model")
+        trainAndPredict(tweet,picklefile)
+    
+    else:
+        prediction = text_clf.predict([tweet])[0]
+        print("Result: " + tweet + " = " + prediction)
+        return prediction
+
+# predicts a tweet represented as a string by training from tweets.csv
+def trainAndPredict(tweet,picklefile):
 
     print("Training the model")
+    text_clf = setup(picklefile)
+
+    print("Done")
+    prediction = text_clf.predict([tweet])[0]
+    print("Result: " + tweet + " = " + prediction)
+    return prediction
+
+def main(argv):
+    
+    print("Training the model")
     text_clf = setup()
+
     print("Done")
     if (len(argv) == 2):
         print("predicting \""+argv[1]+"\" from Donald Trump")
         print(text_clf.predict(argv)[1])
+    
+    print(argv[1] + " : " + predict(argv[1]))
 
 if __name__ == "__main__":
     main(sys.argv)
