@@ -69,7 +69,7 @@ def downloadTweets(tweetData):
             user_info = [user_obj.name,
                          user_obj.screen_name]
 
-            startProgress("Downloading tweets from" + user)
+            startProgress("Downloading tweets from: " + user)
             # Maximum amounts of tweets to retrieve
             max_tweets = 1000;
 
