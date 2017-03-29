@@ -27,11 +27,13 @@ def bootstrap():
 	subtitle = 'How to use TweetMatch'
 	pickleFile = 'dumped_classifier.pkl'
 	tweetData = 'tweets.csv'
+	trumpiness = 0
 	checkData(tweetData,pickleFile)
 	if form.validate_on_submit():
 		subtitle = 'Tweet results'
 		prediction = predict(form.tweet.data,pickleFile)
-		if prediction == "1":
+		trumpiness = prediction[2]*100
+		if prediction[0] == "1":
 			flash('You tweet like: Donald Trump')
 		else:
 			flash('You don\'t tweet like: Donald Trump')
@@ -41,4 +43,4 @@ def bootstrap():
 			Once you're ready to tweet press "Tweet" and TweetMatch will analyse your tweet for you.
 			''')
 
-	return render_template('blog/index.html',subtitle=subtitle,form=form)
+	return render_template('blog/index.html',subtitle=subtitle,form=form,trumpiness=trumpiness)
