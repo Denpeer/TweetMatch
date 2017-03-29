@@ -12,10 +12,11 @@ from nltk.tokenize import RegexpTokenizer
 from collections import Counter
 import itertools
 from collections import defaultdict
+import os.path
 import csv
 
 
-def get_synonyms( synsets, max, ignore, theWord, drank ):
+def get_synonyms( synsets, max, ignore, theWord, drank, count ):
    "function_docstring"
    synl = []
    hyper = []
@@ -67,103 +68,143 @@ def get_synonyms( synsets, max, ignore, theWord, drank ):
            ret_list.append(y)
    return ret_list
 
-f = open("trump_words.txt","w")
-f.truncate
 
-with open('WebServer/App/data/tweets.csv', newline='') as csvfile:
-    reader = csv.DictReader(csvfile)
-    for row in reader:
-        f.write(row['tweet_text'])
-    f.close
- 
-file=open("trump_words.txt","r+")  
- 
-#tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
-tokenizer = RegexpTokenizer(r'\b[^\d\W]+\b')
-#tokens = word_tokenize(file.read())
-tokens = tokenizer.tokenize(file.read())
-
-file.close()
-
-stop_words = stopwords.words('english')
-stop_words.append('co')
-stop_words.append('https')
-stop_words.append('amp')
-
-tokens = [token for token in tokens if token not in stop_words]    
-  
-count = Counter(tokens)
-
-example_sent = "Drain the swamp"
-
-word_tokens = word_tokenize(example_sent)
-
-d = defaultdict(list)
-kwPos = []
-idx = 0
-for token in word_tokens:
-    if token in stop_words:
-        d[idx].append(token)
+def write_tweets_to_file(path):
+    if not path:
+        trump_text_file_path = "trump_words.txt"
     else:
-        kwPos.append(idx)
-    idx = idx + 1
-
-filtered_sentence = []
-
-for w in word_tokens:
-    if w not in stop_words:
-        filtered_sentence.append(w)
-
-print(word_tokens)
-print(filtered_sentence)
-
-swSentence = []
-for w in word_tokens:
-    swSentence.append([])
-
-for k in d:
-    swSentence[k] = d[k][0]
+        trump_text_file_path = path
     
-print(swSentence)
+    f = open(trump_text_file_path,"w+")
+    f.truncate
 
-wordlist = []
-ignoreList = []
-dfreq= defaultdict(list)
-for w in filtered_sentence:
-    #print("=> Word: " + w)
-    ret = []
-    for syn in wordnet.synsets(w):
-        for item in get_synonyms(syn, 10, ignoreList, w, dfreq):
-            ret.append(item)
-    if ret:
-        wordlist.append(ret)
+    with open('Data/tweets.csv', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            f.write(row['tweet_text'])
+        f.close
+ 
+ 
+def tokenize_file(path):
+    if not path:
+        trump_text_file_path = "trump_words.txt"
     else:
-        print("no syn found for word: " + w)
-        swSentence[word_tokens.index(w)] = w 
+        trump_text_file_path = path
+    file=open(trump_text_file_path,"r+")  
+ 
+    #tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    tokenizer = RegexpTokenizer(r'\b[^\d\W]+\b')
+    #tokens = word_tokenize(file.read())
+    tokens = tokenizer.tokenize(file.read())
+    
+    file.close()
+    return tokens
 
-maxGeneratedWords = 10
-keylist = sorted(dfreq.keys())
-for key in keylist:
-    #print ("%s: %s" % (key, dfreq[key]))
-    for w in dfreq[key]:
-        if w not in word_tokens:
-            if sum(len(x) for x in wordlist) > maxGeneratedWords:
-                for l in wordlist:
-                    if w in l:
-                        l.remove(w)
+def setup_stopwords(ls):
+    stop_words = stopwords.words('english')
+    stop_words.append('co')
+    stop_words.append('https')
+    stop_words.append('amp')
+    if ls:
+        for w in ls:
+            stop_words.append(w)
+    return stop_words
+
+
+def log_wordpos(word_tokens, stop_words):    
+    d = defaultdict(list)
+    kwPos = []
+    idx = 0
+    for token in word_tokens:
+        if token in stop_words:
+            d[idx].append(token)
+        else:
+            kwPos.append(idx)
+        idx = idx + 1
+    return d, kwPos
+
+
+def rm_stopwords(word_tokens, stop_words, d):
+    filtered_sentence = []
+    
+    for w in word_tokens:
+        if w not in stop_words:
+            filtered_sentence.append(w)
+    
+    swSentence = []
+    #make empty placeholders for the words
+    for w in word_tokens:
+        swSentence.append([])
+    #add the stop words to the swSentence
+    for k in d:
+        swSentence[k] = d[k][0]
+    return filtered_sentence, swSentence
+
+def build_wordlist(filtered_sentence, word_tokens, swSentence, count):
+    wordlist = []
+    ignoreList = []
+    #frequency of keywords
+    dfreq= defaultdict(list)
+    for w in filtered_sentence:
+        ret = []
+        for syn in wordnet.synsets(w):
+            for item in get_synonyms(syn, 10, ignoreList, w, dfreq, count):
+                ret.append(item)
+        if ret:
+            wordlist.append(ret)
+        else:
+            swSentence[word_tokens.index(w)] = w
+    return wordlist, dfreq
+
+def shrink_wordlist(wordlist, word_tokens, dfreq, maxGeneratedWords):
+    keylist = sorted(dfreq.keys())
+    for key in keylist:
+        #print ("%s: %s" % (key, dfreq[key]))
+        for w in dfreq[key]:
+            if w not in word_tokens:
+                if sum(len(x) for x in wordlist) > maxGeneratedWords:
+                    for l in wordlist:
+                        if w in l:
+                            l.remove(w)
+    return wordlist
             
-  
-prod = list(itertools.product(*wordlist))
-#print("prod: "+str(prod))
 
-print("***** RESULTS *****")
-results = []
-for comb in prod:
-    i = 0
-    temp_res = swSentence
-    for w in comb:
-        temp_res[kwPos[i]] = w
-        i = i + 1
-    temp_res = ' '.join(temp_res)
-    print(temp_res)
-    results.append(temp_res)
+def generate_new_queries(wordlist, kwPos, swSentence):
+    prod = list(itertools.product(*wordlist))
+    results = []
+    for comb in prod:
+        i = 0
+        temp_res = swSentence
+        for w in comb:
+            temp_res[kwPos[i]] = w
+            i = i + 1
+        temp_res = ' '.join(temp_res)
+        results.append(temp_res)
+    return results
+    
+    
+def main(argv):
+    path = "trump_words.txt"
+    maxGeneratedWords = 10
+    write_tweets_to_file(path)
+    
+    stop_words = setup_stopwords([])
+    all_tokens = tokenize_file(path)
+    all_tokens = [token for token in all_tokens if token not in stop_words]    
+      
+    count = Counter(all_tokens)
+    
+    example_sent = "Drain the swamp"
+    
+    word_tokens = word_tokenize(example_sent)
+    
+    d, kwPos = log_wordpos(word_tokens, stop_words)
+    filtered_sentence, swSentence = rm_stopwords(word_tokens, stop_words, d)
+    wordlist, dfreq = build_wordlist(filtered_sentence, word_tokens, swSentence, count)
+    wordlist = shrink_wordlist(wordlist, word_tokens, dfreq, maxGeneratedWords)
+    new_queries = generate_new_queries(wordlist, kwPos, swSentence)
+    print(new_queries)
+   
+
+if __name__ == "__main__":
+    main(sys.argv)
