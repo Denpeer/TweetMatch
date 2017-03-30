@@ -194,7 +194,7 @@ def main(argv):
       
     count = Counter(all_tokens)
     
-    example_sent = "Drain the swamp"
+    example_sent = argv
     
     word_tokens = word_tokenize(example_sent)
     
