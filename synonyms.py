@@ -15,60 +15,64 @@ from collections import defaultdict
 import os.path
 import csv
 
-
+#use nltk synsets to get synonyms, hypernyms, hyponums and member holonyms
+#max limits the max of each type of synonym, drank is a dict with (appearances, word) based on trump's tweets
+#ignore is the list of words that have already been added to the list but can also be used to ignore certain words if hardcoded
 def get_synonyms( synsets, max, ignore, theWord, drank, count ):
    "function_docstring"
+   #init the data structs
    synl = []
    hyper = []
    hypo = []
    mem_holo = []
+   #get synonyms
    for l in synsets.lemmas():
         if l.name().lower() not in ignore:
             if len(synl) < max:
                 if count[l.name()] > 0:
-                    #print("synl: "+l.name()+" appears: "+str(count[l.name()]) + " times")
                     synl.append(l.name())
                     ignore.append(l.name().lower())
                     drank[count[l.name()]].append(l.name())
+   #get hypernyms 
    for h in synsets.hypernyms():
         for l in h.lemmas(): 
             if l.name().lower() not in ignore:
                 if len(hyper) < max:
                     if count[l.name()] > 0:
-                        #print("hyper: "+l.name()+" appears: "+str(count[l.name()]) + " times")
                         hyper.append(l.name())
                         ignore.append(l.name().lower())
                         drank[count[l.name()]].append(l.name())
-                        
+   #get hyponyms                     
    for h in synsets.hyponyms():
         for l in h.lemmas():
             if l.name().lower() not in ignore:
                 if len(hypo) < max:
                     if count[l.name()] > 0:
-                        #print("hypo: "+l.name()+" appears: "+str(count[l.name()]) + " times")
                         hypo.append(l.name())
                         ignore.append(l.name().lower())
                         drank[count[l.name()]].append(l.name())
+   #get member holonyms
    for h in synsets.member_holonyms():
         for l in h.lemmas(): 
             if l.name().lower() not in ignore:
                 if len(mem_holo) < max:
                     if count[l.name()] > 0:
-                        #print("mem_holo: "+l.name()+" appears: "+str(count[l.name()]) + " times")
                         mem_holo.append(l.name())
                         ignore.append(l.name().lower())
                         drank[count[l.name()]].append(l.name())
+   #init the list to be returned
    ret_list = []
    if theWord.lower() not in ignore:
        ret_list.append(theWord)
        ignore.append(theWord.lower())
    listoflists = [synl,hyper,hypo,mem_holo]
+   #add the found words to the ret_list
    for x in listoflists:
        for y in x:
            ret_list.append(y)
    return ret_list
 
-
+#writes all tweets of donald trump to a text file to use for word frequency
 def write_tweets_to_file(path):
     if not path:
         trump_text_file_path = "trump_words.txt"
@@ -81,10 +85,11 @@ def write_tweets_to_file(path):
     with open('Data/tweets.csv', newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
-            f.write(row['tweet_text'])
+            if row['politician_name'] == 'Donald J. Trump':
+                f.write(row['tweet_text'])
         f.close
  
- 
+#tokenzie all words of the text file containing trump's tweets
 def tokenize_file(path):
     if not path:
         trump_text_file_path = "trump_words.txt"
@@ -92,16 +97,17 @@ def tokenize_file(path):
         trump_text_file_path = path
     file=open(trump_text_file_path,"r+")  
  
-    #tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+    #remove words containing digits and punctuation
     tokenizer = RegexpTokenizer(r'\b[^\d\W]+\b')
-    #tokens = word_tokenize(file.read())
     tokens = tokenizer.tokenize(file.read())
     
     file.close()
     return tokens
 
+#init list of stop words
 def setup_stopwords(ls):
     stop_words = stopwords.words('english')
+    #most recurring words that are not words from trumps tweets
     stop_words.append('co')
     stop_words.append('https')
     stop_words.append('amp')
@@ -110,20 +116,22 @@ def setup_stopwords(ls):
             stop_words.append(w)
     return stop_words
 
-
+#log the positions of stop words and keywords to build the queries later
 def log_wordpos(word_tokens, stop_words):    
     d = defaultdict(list)
     kwPos = []
     idx = 0
+    #fill a dict with the stop word positions and the words
     for token in word_tokens:
         if token in stop_words:
             d[idx].append(token)
         else:
+            #save keyword positions
             kwPos.append(idx)
         idx = idx + 1
     return d, kwPos
 
-
+#remove stopwords from the query
 def rm_stopwords(word_tokens, stop_words, d):
     filtered_sentence = []
     
@@ -140,6 +148,8 @@ def rm_stopwords(word_tokens, stop_words, d):
         swSentence[k] = d[k][0]
     return filtered_sentence, swSentence
 
+#using the filtered sentence, set of word tokens (the tokenized user query), the stop word sentence and the term frequency count
+#build a list of similar words and their frequency
 def build_wordlist(filtered_sentence, word_tokens, swSentence, count):
     wordlist = []
     ignoreList = []
@@ -156,10 +166,10 @@ def build_wordlist(filtered_sentence, word_tokens, swSentence, count):
             swSentence[word_tokens.index(w)] = w
     return wordlist, dfreq
 
+#remove words that do not appear often in trump's tweets
 def shrink_wordlist(wordlist, word_tokens, dfreq, maxGeneratedWords):
     keylist = sorted(dfreq.keys())
     for key in keylist:
-        #print ("%s: %s" % (key, dfreq[key]))
         for w in dfreq[key]:
             if w not in word_tokens:
                 if sum(len(x) for x in wordlist) > maxGeneratedWords:
@@ -168,7 +178,7 @@ def shrink_wordlist(wordlist, word_tokens, dfreq, maxGeneratedWords):
                             l.remove(w)
     return wordlist
             
-
+#combine similar word results to generate a list of similar queries that might be more similar to trump's tweets
 def generate_new_queries(wordlist, kwPos, swSentence):
     prod = list(itertools.product(*wordlist))
     results = []
@@ -182,29 +192,44 @@ def generate_new_queries(wordlist, kwPos, swSentence):
         results.append(temp_res)
     return results
     
-    
+#input: a tweet/query, prints a list of similar queries that might be more trump-like   
 def main(argv):
+    #the path to the file containing trump's tweets. if it does not exist it will be created and populated
     path = "trump_words.txt"
-    maxGeneratedWords = 10
     write_tweets_to_file(path)
     
+    #the cap on how many similar words to generate
+    maxGeneratedWords = 10
+    
+    #init stop words list
     stop_words = setup_stopwords([])
+    
+    #tokenize trump's tweets
     all_tokens = tokenize_file(path)
+    #rm stop words
     all_tokens = [token for token in all_tokens if token not in stop_words]    
-      
+    #count trump's term frequency
     count = Counter(all_tokens)
     
-    example_sent = argv
+    #the query
+    the_query = argv
     
-    word_tokens = word_tokenize(example_sent)
+    #tokenize the query
+    word_tokens = word_tokenize(the_query)
     
+    #log stop word and keyword positions
     d, kwPos = log_wordpos(word_tokens, stop_words)
+    #filter the query from stopwords
     filtered_sentence, swSentence = rm_stopwords(word_tokens, stop_words, d)
+    #generate a list of similar words
     wordlist, dfreq = build_wordlist(filtered_sentence, word_tokens, swSentence, count)
+    #shrink list of similar words for efficiency
     wordlist = shrink_wordlist(wordlist, word_tokens, dfreq, maxGeneratedWords)
+    #generate list of new queries that might be more similar to what trump tweets
     new_queries = generate_new_queries(wordlist, kwPos, swSentence)
+    #print the resulting string list
     print(new_queries)
    
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main("Make USA good again")
