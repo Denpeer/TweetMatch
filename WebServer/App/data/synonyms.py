@@ -14,7 +14,8 @@ import itertools
 from collections import defaultdict
 import os
 import csv
-from sgd import predict
+from sgd import trainAndPredictList, checkData
+
 
 #use nltk synsets to get synonyms, hypernyms, hyponums and member holonyms
 #max limits the max of each type of synonym, drank is a dict with (appearances, word) based on trump's tweets
@@ -198,13 +199,14 @@ def generate_new_queries(wordlist, kwPos, swSentence):
     
 #input: a tweet/query, prints a list of similar queries that might be more trump-like   
 def main(argv):
+    checkData("tweets.csv"," ")
     if not argv:
         #test string in case of empty input
         new_queries = expand_query("Build schools to educate the people of US", 10)
     else:
         new_queries = expand_query(argv, 10)
     
-    get_prediction_results(new_queries,[])
+    get_prediction_results(new_queries,"dumped_classifier.pkl")
     
     
 def expand_query(query, maxWords):
@@ -239,10 +241,27 @@ def expand_query(query, maxWords):
     return new_queries
     
 def get_prediction_results(qls, pickleFile):
-    for q in qls:
-        print(q)
-        #prediction,pred_prob,pred_prob2 = predict(q,pickleFile)
+    predlist = trainAndPredictList(qls, "tweets.csv", pickleFile)
+
+    scores = defaultdict(list)
+    i = 0
+    if predlist:
+        for pred in predlist:
+            scores[pred[2]] = qls[i]
+            i = i + 1
+        keylist = sorted(scores.keys())
+        for k in keylist:
+            print("Score: " + str(k) + " Query: " + scores[k])
+        print(scores[keylist[len(keylist)-1]])
+        #TODO: only show suggestion(s) if score is higher than the user query
+    else:
+        print("No suggestions found")
+        
+    
+    #for q in qls:
+     #   print(q)
+      #  prediction,pred_prob,pred_prob2 = trainAndPredictList(q, "tweets.csv",pickleFile)
         #print("- pred_prob: " + pred_prob + "- pred_prob2: " + pred_prob2)
 
 if __name__ == "__main__":
-    main("Build shools to educate the people of US")
+    main("I would like to construct a wall around the usa")
