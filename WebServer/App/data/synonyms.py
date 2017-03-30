@@ -14,7 +14,7 @@ import itertools
 from collections import defaultdict
 import os
 import csv
-from sgd import trainAndPredictList, checkData
+from sgd import predict, checkData
 
 
 #use nltk synsets to get synonyms, hypernyms, hyponums and member holonyms
@@ -239,9 +239,12 @@ def expand_query(query, maxWords):
     new_queries = generate_new_queries(wordlist, kwPos, swSentence)
     #print the resulting string list
     return new_queries
-    
+ 
+   
 def get_prediction_results(qls, pickleFile):
-    predlist = trainAndPredictList(qls, "tweets.csv", pickleFile)
+    predlist = []
+    for q in qls:
+        predlist.append(predict(q,pickleFile))
 
     scores = defaultdict(list)
     i = 0
@@ -249,19 +252,16 @@ def get_prediction_results(qls, pickleFile):
         for pred in predlist:
             scores[pred[2]] = qls[i]
             i = i + 1
-        keylist = sorted(scores.keys())
-        for k in keylist:
-            print("Score: " + str(k) + " Query: " + scores[k])
-        print(scores[keylist[len(keylist)-1]])
-        #TODO: only show suggestion(s) if score is higher than the user query
+        keylist = list(reversed(sorted(scores.keys())))
+        print("Most trump like suggestion: "+scores[keylist[0]])
     else:
         print("No suggestions found")
         
+    return scores, keylist
     
-    #for q in qls:
-     #   print(q)
-      #  prediction,pred_prob,pred_prob2 = trainAndPredictList(q, "tweets.csv",pickleFile)
-        #print("- pred_prob: " + pred_prob + "- pred_prob2: " + pred_prob2)
+def get_suggestions(query, pickleFile):
+    new_queries = expand_query(query, 10)
+    return get_prediction_results(new_queries, pickleFile)
 
 if __name__ == "__main__":
     main("I would like to construct a wall around the usa")

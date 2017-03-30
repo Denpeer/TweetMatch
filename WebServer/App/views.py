@@ -1,5 +1,6 @@
 import sys
 from App.data.sgd import predict, checkData
+from App.data.synonyms import get_suggestions
 from flask import render_template, flash, redirect
 from App import app
 from .forms import LoginForm
@@ -30,13 +31,20 @@ def bootstrap():
 	trumpiness = 0
 	checkData(tweetData,pickleFile)
 	if form.validate_on_submit():
-		subtitle = 'Tweet results'
-		prediction = predict(form.tweet.data,pickleFile)
-		trumpiness = prediction[2]*100
-		if prediction[0] == "1":
-			flash('You tweet like: Donald Trump')
-		else:
-			flash('You don\'t tweet like: Donald Trump')
+         subtitle = 'Tweet results'
+         prediction = predict(form.tweet.data,pickleFile)
+         trumpiness = prediction[2]*100
+         if prediction[0] == "1":
+             flash('You tweet like: Donald Trump')
+         else:
+             flash('You don\'t tweet like: Donald Trump')
+         scores, keylist = get_suggestions(form.tweet.data,pickleFile)
+         suggestions = []
+         for key in keylist:
+             if key > prediction[2]:
+                 suggestions.append(scores[key])
+         for suggestion in suggestions:
+               print(suggestion)
 	else:
 		flash('''
 			Using TweetMatch is simple! Start by typing your tweet in the box above. 
