@@ -9,11 +9,13 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline, FeatureUnion
 from math import ceil
-from sklearn import metrics
+from sklearn import metrics, svm
 from textstat.textstat import textstat
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import normalize
 from App.data.tweet_mining import downloadTweets
+
+
 
 #Feature transformer class for pipeline
 class extraFeature(BaseEstimator, TransformerMixin):
@@ -56,18 +58,28 @@ def train(X,Y):
                                                    ('words',Pipeline([
                                                                       ('vect', CountVectorizer(ngram_range=(1,2))),
                                                                       ('tfidf', TfidfTransformer(use_idf=True))
-                                                                      ])),
-                                                   ('fleshReadingEase',extraFeature(textstat.flesch_reading_ease)),
-                                                   ('smogIndex',extraFeature(textstat.smog_index)),
-                                                   ('colemanLiauIndex',extraFeature(textstat.coleman_liau_index)),
-                                                   ('fleschKincaidGrade',extraFeature(textstat.flesch_kincaid_grade)),
-                                                   ('automatedReadibilityIndex',extraFeature(textstat.automated_readability_index)),
-                                                   ('daleChallReadability',extraFeature(textstat.dale_chall_readability_score)),
-                                                   ('difficultWords',extraFeature(textstat.difficult_words)),
-                                                   ('linsearWriteFormula',extraFeature(textstat.linsear_write_formula)),
-                                                   ('gunningFog',extraFeature(textstat.gunning_fog))
+                                                                      ]))
+                                                    # This is how you would add an extra feature for the classifier
+                                                    # ('fleshReadingEase',extraFeature(textstat.flesch_reading_ease))
+
                                                    ])),
                          ('clf', SGDClassifier(learning_rate='optimal',eta0=0.001,class_weight='balanced',loss='modified_huber', penalty='l2',alpha=1e-3, n_iter=5, random_state=42))
+    ])
+    
+    return text_clf.fit(X, Y)
+
+#Return pipeline with the combined features of the tdidf and reading ease score and Stochastic Gradient Descent Classifier
+def trainSVC(X,Y):
+    text_clf = Pipeline([
+                         ('features',FeatureUnion([
+                                                   ('words',Pipeline([
+                                                                      ('vect', CountVectorizer(ngram_range=(1,2))),
+                                                                      ('tfidf', TfidfTransformer(use_idf=True))
+                                                                      ]))
+                                                   # This is how you would add an extra feature for the classifier
+                                                   # ('fleshReadingEase',extraFeature(textstat.flesch_reading_ease))
+                                                   ])),
+                         ('clf', svm.SVC(probability = True, class_weight = 'balanced', C = 1e5))
     ])
     
     return text_clf.fit(X, Y)
@@ -139,7 +151,7 @@ def checkData(tweetData,pickleFile):
 
     # testtweet can be used in this case since the value is not actually used. The function just trains the model
     if (os.path.isfile(pickleFile) == False):
-        trainAndPredict('testweet',pickleFile)
+        trainAndPredict('testweet',tweetData,pickleFile)
     else:
         try:
         # unpickle classifier
@@ -148,20 +160,20 @@ def checkData(tweetData,pickleFile):
     
         except AttributeError as e:
             print(e + ": model pickled outside of flask.\n Retraining model")
-            trainAndPredict('testtweet',pickleFile)
+            trainAndPredict('testtweet',tweetData,pickleFile)
 
     print("current working directory: " + os.getcwd() +"\n"+"Tweet data available on: "+ tweetData + " Pickled model available on: "+ pickleFile)
     return True
 
 # predicts a tweet represented as a string by training from tweets.csv
-def trainAndPredict(tweet,pickleFile):
+def trainAndPredict(tweet,tweetData,pickleFile):
 
     print("Training the model")
     text_clf = setup(pickleFile)
 
     print("Done")
     
-    return predict(pickleFile)
+    return predict(tweet, pickleFile)
 
 def main(argv):
     
