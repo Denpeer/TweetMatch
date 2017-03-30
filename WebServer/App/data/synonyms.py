@@ -14,6 +14,7 @@ import itertools
 from collections import defaultdict
 import os
 import csv
+from sgd import predict
 
 #use nltk synsets to get synonyms, hypernyms, hyponums and member holonyms
 #max limits the max of each type of synonym, drank is a dict with (appearances, word) based on trump's tweets
@@ -157,6 +158,9 @@ def build_wordlist(filtered_sentence, word_tokens, swSentence, count):
     dfreq= defaultdict(list)
     for w in filtered_sentence:
         ret = []
+        #if spelling mistake or wierd word then no synonyms but still keep word
+        if not wordnet.synsets(w):
+            ret.append(w)
         for syn in wordnet.synsets(w):
             for item in get_synonyms(syn, 10, ignoreList, w, dfreq, count):
                 ret.append(item)
@@ -199,7 +203,8 @@ def main(argv):
         new_queries = expand_query("Build schools to educate the people of US", 10)
     else:
         new_queries = expand_query(argv, 10)
-    print(new_queries)
+    
+    get_prediction_results(new_queries,[])
     
     
 def expand_query(query, maxWords):
@@ -233,7 +238,11 @@ def expand_query(query, maxWords):
     #print the resulting string list
     return new_queries
     
-   
+def get_prediction_results(qls, pickleFile):
+    for q in qls:
+        print(q)
+        #prediction,pred_prob,pred_prob2 = predict(q,pickleFile)
+        #print("- pred_prob: " + pred_prob + "- pred_prob2: " + pred_prob2)
 
 if __name__ == "__main__":
-    main("Make USA good again")
+    main("Build shools to educate the people of US")
