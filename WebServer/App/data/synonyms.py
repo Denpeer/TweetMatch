@@ -14,7 +14,7 @@ import itertools
 from collections import defaultdict
 import os
 import csv
-from sgd import predict, checkData
+from App.data.sgd import predict, checkData
 
 
 #use nltk synsets to get synonyms, hypernyms, hyponums and member holonyms
