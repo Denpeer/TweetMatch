@@ -12,7 +12,7 @@ from nltk.tokenize import RegexpTokenizer
 from collections import Counter
 import itertools
 from collections import defaultdict
-import os.path
+import os
 import csv
 
 #use nltk synsets to get synonyms, hypernyms, hyponums and member holonyms
@@ -82,7 +82,7 @@ def write_tweets_to_file(path):
     f = open(trump_text_file_path,"w+")
     f.truncate
 
-    with open('Data/tweets.csv', newline='') as csvfile:
+    with open('tweets.csv', newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             if row['politician_name'] == 'Donald J. Trump':
@@ -194,29 +194,32 @@ def generate_new_queries(wordlist, kwPos, swSentence):
     
 #input: a tweet/query, prints a list of similar queries that might be more trump-like   
 def main(argv):
-    #the path to the file containing trump's tweets. if it does not exist it will be created and populated
+    if not argv:
+        #test string in case of empty input
+        new_queries = expand_query("Build schools to educate the people of US", 10)
+    else:
+        new_queries = expand_query(argv, 10)
+    print(new_queries)
+    
+    
+def expand_query(query, maxWords):
     path = "trump_words.txt"
-    write_tweets_to_file(path)
-    
-    #the cap on how many similar words to generate
-    maxGeneratedWords = 10
-    
+    if os.path.isfile(path):
+        statinfo = os.stat(path)
+        if statinfo.st_size == 0:
+            write_tweets_to_file(path)
+    else:
+        write_tweets_to_file(path)
     #init stop words list
     stop_words = setup_stopwords([])
-    
     #tokenize trump's tweets
     all_tokens = tokenize_file(path)
     #rm stop words
     all_tokens = [token for token in all_tokens if token not in stop_words]    
     #count trump's term frequency
-    count = Counter(all_tokens)
-    
-    #the query
-    the_query = argv
-    
+    count = Counter(all_tokens)    
     #tokenize the query
-    word_tokens = word_tokenize(the_query)
-    
+    word_tokens = word_tokenize(query)   
     #log stop word and keyword positions
     d, kwPos = log_wordpos(word_tokens, stop_words)
     #filter the query from stopwords
@@ -224,11 +227,12 @@ def main(argv):
     #generate a list of similar words
     wordlist, dfreq = build_wordlist(filtered_sentence, word_tokens, swSentence, count)
     #shrink list of similar words for efficiency
-    wordlist = shrink_wordlist(wordlist, word_tokens, dfreq, maxGeneratedWords)
+    wordlist = shrink_wordlist(wordlist, word_tokens, dfreq, maxWords)
     #generate list of new queries that might be more similar to what trump tweets
     new_queries = generate_new_queries(wordlist, kwPos, swSentence)
     #print the resulting string list
-    print(new_queries)
+    return new_queries
+    
    
 
 if __name__ == "__main__":
