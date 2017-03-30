@@ -20,4 +20,4 @@ access_secret
 ```
 (note the empty line on the bottom)
 The keys can be found on the `apps.twitter.com` website after you create your app. (see the image below)
-![alt text](https://github.com/Denpeer/TweetMatch/images/keys.png "keys on the app.twitter.com website")
+![alt text](https://raw.githubusercontent.com/Denpeer/TweetMatch/master/images/keys.png "keys on the app.twitter.com website")
